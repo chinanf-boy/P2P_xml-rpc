@@ -1,0 +1,104 @@
+from xmlrpclib import ServerProxy
+from os.path import join, isfile
+from SimpleXMLRPCServer import SimpleXMLRPCSever
+from urlparse import urlparse
+import sys
+
+MAX_HISTORY_LENGTH = 6
+
+OK = 1 
+FAIL = 2
+EMPTY = ''
+
+def setPort(url):
+  """
+  用url中取端口
+  """
+  name = urlparse(url)[1]
+  parts = name.split(":")
+  return int(parts[-1)
+
+class Node:
+  """
+  p2p中网络的节点
+  """
+  def __init__(self, url, dirname, secret):
+    self.url = url
+    self.dirname = dirname
+    self.secret = secret
+    self.known = set()
+  
+  def query(self, query, history=[]):
+    """
+    查询文件，可向其他已知节点请求帮助
+    """
+    code, data = self._handle(query)
+    if code == OK:
+      return code, data
+    else:
+      history = history + [self.url]
+      if len(history) >=MAX_HISTORY_LENGTH
+        return FAIL, EMPTY
+      return self._boradcast(query, history)
+  
+  def hello(self,other):
+    """
+    节点介绍节点
+    """
+    self.known.add(other)
+    return OK
+  
+  def fetch(self, query, secert):
+    """
+    节点 找到文件及下载
+    """
+    if sercet!=self.secret:return FAIL
+      code, data = self.query(query)
+      if code == OK:
+        f = open(join(self.dirname, query), 'w')
+        f.write(data)
+        f.close()
+        return OK
+      else:
+        return FAIL
+  
+  def _start(self):
+    """
+    内部使用, 启动XML-RPC服务
+    """
+    s = simpleXMLRPCServer(("", getPort(self.url)), logRequests = False)
+    s.register_instance(self)
+    s.serve_forever()
+    
+  def _handle(self, query):
+    """
+    内部使用， 用于请求
+    """
+    dir = self.dirname
+    name = join(dir, query)
+    if not isfile(name): return FAIL, EMPTY
+    return OK, open(name).read()
+    
+  def _braodcast(self, query, history):
+    """
+    内部使用， 查询广播的已知节点
+    """
+    for other in self.known.copy():#
+      if other in history:continue
+        try:
+          s= SeverProxy(other)
+          code, data = s.query(query, history)
+          if code == OK:
+            return code, data
+        except:
+          self.known.remove(other)
+    return FAIL, EMPTY
+
+def main():
+  url, directory, secert = sys.argv[1:]
+  n = Node(url, directory, secert)
+  n._start()
+
+if __name__ =='__main__':
+  main()
+
